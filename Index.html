@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>中壢高商 AI 學習輔助研習</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #f5b223;
+      --gold-deep: #d8910d;
+      --brown: #7c4d37;
+      --brown-deep: #4b3025;
+      --cream: #f8f5f2;
+      --paper: #fffdf9;
+      --ink: #302b28;
+      --muted: #716a65;
+      --line: #e5ddd6;
+      --error: #c83e3e;
+      --shadow: 0 18px 50px rgba(86, 54, 36, .11);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 90% 2%, rgba(245,178,35,.22), transparent 30rem),
+        radial-gradient(circle at 5% 90%, rgba(124,77,55,.12), transparent 35rem),
+        var(--cream);
+      font-family: 'Noto Sans TC', sans-serif;
+      line-height: 1.65;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .24;
+      background-image: radial-gradient(rgba(124,77,55,.18) .75px, transparent .75px);
+      background-size: 15px 15px;
+      mask-image: linear-gradient(to bottom, #000, transparent 65%);
+    }
+
+    button, input, select, textarea { font: inherit; }
+    [hidden] { display: none !important; }
+    button, label, select { -webkit-tap-highlight-color: transparent; }
+    :focus-visible { outline: 4px solid rgba(245,178,35,.36); outline-offset: 3px; }
+
+    .page-shell { width: min(100% - 32px, 800px); margin: 0 auto; padding: 42px 0 56px; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 38px 42px 30px;
+      border: 1px solid rgba(124,77,55,.08);
+      border-top: 7px solid var(--gold);
+      border-radius: 28px;
+      background: rgba(255,253,249,.94);
+      box-shadow: var(--shadow);
+      text-align: center;
+      animation: reveal .6s ease both;
+    }
+    .hero::after {
+      content: 'AI';
+      position: absolute;
+      right: -16px;
+      bottom: -60px;
+      color: rgba(245,178,35,.075);
+      font: 900 170px/1 'Zen Maru Gothic', sans-serif;
+      transform: rotate(-7deg);
+    }
+    .school-kicker { margin: 0 0 12px; color: var(--brown); font-size: 13px; font-weight: 900; letter-spacing: .18em; }
+    .phase-badge { display: inline-flex; min-height: 36px; align-items: center; padding: 6px 15px; border-radius: 999px; color: var(--brown); background: #fff3d3; font-size: 13px; font-weight: 900; }
+    h1 { position: relative; z-index: 1; margin: 15px 0 6px; color: var(--brown-deep); font: 900 clamp(27px, 5vw, 40px)/1.25 'Zen Maru Gothic', sans-serif; letter-spacing: -.02em; }
+    .hero-description { position: relative; z-index: 1; margin: 0; color: var(--muted); }
+    .progress-wrap { position: relative; z-index: 1; margin-top: 25px; }
+    .progress-copy { display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .progress-track { height: 8px; overflow: hidden; border-radius: 99px; background: #eee7df; }
+    .progress-bar { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--gold), #f7c95e); transition: width .35s ease; }
+    .course-grid { display: grid; gap: 14px; margin-top: 24px; text-align: left; }
+    .course-card { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 8px 18px; padding: 20px; border: 2px solid var(--line); border-radius: 17px; color: var(--ink); background: #fff; text-align: left; cursor: pointer; transition: .2s ease; }
+    .course-card:hover { transform: translateY(-3px); border-color: var(--gold); box-shadow: 0 10px 24px rgba(216,145,13,.14); }
+    .course-name { color: var(--brown-deep); font-size: 18px; font-weight: 900; }
+    .course-meta { color: var(--muted); font-size: 13px; }
+    .course-phase { align-self: start; padding: 4px 10px; border-radius: 999px; color: var(--brown); background: #fff3d3; font-size: 12px; font-weight: 900; }
+    .back-button { position: relative; z-index: 2; display: block; margin: 0 0 14px; padding: 7px 12px; border: 0; border-radius: 9px; color: var(--brown); background: #f5eee8; font-weight: 800; cursor: pointer; }
+
+    form { margin-top: 22px; }
+    .question-card {
+      margin-top: 18px;
+      padding: 28px;
+      border: 1px solid rgba(124,77,55,.1);
+      border-radius: var(--radius);
+      background: rgba(255,253,249,.96);
+      box-shadow: 0 9px 28px rgba(86,54,36,.07);
+      animation: reveal .5s ease both;
+    }
+    .question-card.error { border-color: var(--error); box-shadow: 0 0 0 3px rgba(200,62,62,.1); }
+    .question-heading { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+    .question-number { flex: 0 0 auto; padding: 4px 10px; border-radius: 8px; color: #fff; background: var(--brown); font-size: 13px; font-weight: 900; letter-spacing: .03em; }
+    .question-text { margin: 0; font-size: 17px; font-weight: 700; }
+    .required { color: var(--error); font-size: 12px; white-space: nowrap; }
+    .optional { color: var(--muted); font-size: 12px; font-weight: 500; }
+
+    .role-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .role-choice { position: relative; cursor: pointer; }
+    .role-choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .role-tile { min-height: 122px; display: grid; place-items: center; align-content: center; gap: 4px; border: 2px solid var(--line); border-radius: 18px; background: #fff; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+    .role-icon { font-size: 34px; }
+    .role-label { color: var(--muted); font-size: 17px; font-weight: 900; }
+    .role-choice:hover .role-tile { transform: translateY(-3px); border-color: rgba(245,178,35,.55); }
+    .role-choice input:checked + .role-tile { border-color: var(--gold); background: #fffaf0; box-shadow: 0 9px 24px rgba(245,178,35,.16); }
+    .role-choice input:checked + .role-tile .role-label { color: var(--brown); }
+
+    .branch { display: none; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 22px; padding-top: 22px; border-top: 1px dashed var(--line); }
+    .branch.active { display: grid; animation: reveal .35s ease both; }
+    .field { display: grid; gap: 7px; }
+    .field.full { grid-column: 1 / -1; }
+    .contact-field { margin-top: 22px; }
+    .field label { color: var(--brown); font-size: 14px; font-weight: 800; }
+    .control { width: 100%; min-height: 48px; padding: 11px 14px; border: 2px solid var(--line); border-radius: 13px; color: var(--ink); background: #fff; transition: border-color .2s ease, box-shadow .2s ease; }
+    .control:focus { border-color: var(--gold); outline: 0; box-shadow: 0 0 0 4px rgba(245,178,35,.13); }
+    textarea.control { min-height: 116px; resize: vertical; }
+
+    .likert { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .scale-choice { position: relative; cursor: pointer; }
+    .scale-choice input { position: absolute; opacity: 0; pointer-events: none; }
+    .scale-face { min-height: 86px; display: grid; place-items: center; align-content: center; gap: 7px; padding: 8px 5px; border: 2px solid var(--line); border-radius: 14px; background: #fff; text-align: center; transition: .2s ease; }
+    .scale-dot { width: 22px; height: 22px; border: 3px solid #d7cdc5; border-radius: 50%; background: #fff; box-shadow: inset 0 0 0 5px #fff; }
+    .scale-copy { color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .scale-choice:hover .scale-face { border-color: rgba(245,178,35,.55); transform: translateY(-2px); }
+    .scale-choice input:checked + .scale-face { border-color: var(--gold); background: #fffaf0; }
+    .scale-choice input:checked + .scale-face .scale-dot { border-color: var(--gold); background: var(--gold); }
+    .scale-choice input:checked + .scale-face .scale-copy { color: var(--brown); font-weight: 900; }
+
+    .error-message { display: none; margin: 12px 0 0; color: var(--error); font-size: 13px; font-weight: 700; }
+    .question-card.error .error-message { display: block; }
+    .submit-area { display: grid; place-items: center; gap: 13px; margin-top: 30px; }
+    .submit-button { min-height: 54px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 13px 32px; border: 0; border-radius: 999px; color: #fff; background: linear-gradient(135deg, var(--gold), var(--gold-deep)); box-shadow: 0 12px 25px rgba(216,145,13,.24); font-weight: 900; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease; }
+    .submit-button:hover { transform: translateY(-3px); box-shadow: 0 16px 32px rgba(216,145,13,.3); }
+    .submit-button:disabled { cursor: wait; opacity: .62; transform: none; }
+    .status { min-height: 24px; color: var(--error); text-align: center; font-size: 14px; font-weight: 700; }
+    footer { margin-top: 32px; color: var(--muted); text-align: center; font-size: 13px; }
+
+    .modal-overlay { position: fixed; inset: 0; z-index: 10; display: none; place-items: center; padding: 20px; background: rgba(48,43,40,.68); backdrop-filter: blur(8px); }
+    .modal-overlay.active { display: grid; }
+    .modal { width: min(100%, 420px); padding: 36px; border-radius: 24px; background: var(--paper); box-shadow: var(--shadow); text-align: center; animation: pop .3s ease both; }
+    .modal-mark { width: 72px; height: 72px; display: grid; place-items: center; margin: 0 auto 18px; border-radius: 50%; color: var(--brown); background: #fff2d0; font-size: 34px; font-weight: 900; }
+    .modal h2 { margin: 0 0 8px; color: var(--brown-deep); font-family: 'Zen Maru Gothic', sans-serif; }
+    .modal p { margin: 0 0 24px; color: var(--muted); }
+    .modal button { min-height: 48px; width: 100%; border: 0; border-radius: 13px; color: #fff; background: var(--brown); font-weight: 800; cursor: pointer; }
+
+    @keyframes reveal { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+    @keyframes pop { from { opacity: 0; transform: scale(.94) translateY(10px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+
+    @media (max-width: 600px) {
+      .page-shell { width: min(100% - 22px, 800px); padding-top: 18px; }
+      .hero { padding: 28px 20px 24px; border-radius: 22px; }
+      .hero::after { font-size: 115px; bottom: -42px; }
+      .question-card { padding: 21px 17px; border-radius: 18px; }
+      .branch { grid-template-columns: 1fr; }
+      .likert { grid-template-columns: 1fr; }
+      .scale-face { min-height: 52px; display: flex; justify-content: space-between; padding: 10px 15px; }
+      .scale-copy { font-size: 14px; }
+      .scale-choice input:checked + .scale-face { transform: translateX(3px); }
+      .submit-button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <section class="hero" id="courseView">
+      <p class="school-kicker">中壢高商 · AI LEARNING LAB</p>
+      <span class="phase-badge">研習成果問卷</span>
+      <h1>選擇研習課程</h1>
+      <p class="hero-description">請選擇本次參加的課程，再開始填寫問卷。</p>
+      <div class="course-grid" id="courseList"></div>
+      <p class="status" id="courseStatus" aria-live="polite">正在讀取開放課程…</p>
+    </section>
+
+    <div id="surveyView" hidden>
+    <header class="hero">
+      <button class="back-button" type="button" id="backToCoursesBtn">← 返回選擇課程</button>
+      <p class="school-kicker">中壢高商 · AI LEARNING LAB</p>
+      <span class="phase-badge" id="phaseBadge"></span>
+      <h1><span id="selectedCourseName"></span><br><span id="surveyTitle"></span></h1>
+      <p class="hero-description" id="surveyDescription"></p>
+      <div class="progress-wrap" aria-label="問卷完成進度">
+        <div class="progress-copy"><span>填寫進度</span><span id="progressText">0%</span></div>
+        <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+      </div>
+    </header>
+
+    <form id="surveyForm" novalidate>
+      <section class="question-card" id="userInfoCard">
+        <div class="question-heading"><span class="question-number">基本資料</span><p class="question-text">請先選擇您的身份</p></div>
+        <div class="role-grid">
+          <label class="role-choice"><input type="radio" name="role" value="student"><span class="role-tile"><span class="role-icon" aria-hidden="true">🎓</span><span class="role-label">學生</span></span></label>
+          <label class="role-choice"><input type="radio" name="role" value="teacher"><span class="role-tile"><span class="role-icon" aria-hidden="true">👨‍🏫</span><span class="role-label">教師</span></span></label>
+        </div>
+
+        <div class="branch" id="teacherSection">
+          <div class="field"><label for="teacherSubject">任教科別</label><select class="control" id="teacherSubject"><option value="">請選擇科別</option><option>國文</option><option>英文</option><option>數學</option><option>自然</option><option>社會</option><option>專業類科教師</option></select></div>
+          <div class="field"><label for="teacherName">姓名</label><input class="control" id="teacherName" autocomplete="name" placeholder="請輸入姓名"></div>
+        </div>
+
+        <div class="branch" id="studentSection">
+          <div class="field"><label for="studentDept">就讀科別</label><select class="control" id="studentDept"><option value="">請選擇科別</option><option>商經科</option><option>國貿科</option><option>資處科</option><option>綜合高中</option></select></div>
+          <div class="field"><label for="studentGrade">年級</label><select class="control" id="studentGrade"><option value="">請選擇年級</option><option>一年級</option><option>二年級</option><option>三年級</option></select></div>
+          <div class="field"><label for="studentClassNum">班級</label><select class="control" id="studentClassNum"><option value="">請先選擇科別</option></select></div>
+          <div class="field"><label for="studentId">姓名／學號</label><input class="control" id="studentId" placeholder="請輸入姓名或學號"></div>
+        </div>
+        <div class="field contact-field">
+          <label for="contactEmail">聯絡信箱 <span class="optional">選填</span></label>
+          <input class="control" id="contactEmail" type="email" autocomplete="email" inputmode="email" placeholder="例如：name@example.com">
+        </div>
+        <p class="error-message" id="userInfoError">請完整填寫身份與基本資料。</p>
+      </section>
+
+      <div id="questionsContainer"></div>
+
+      <section class="question-card" id="card-q7">
+        <div class="question-heading"><span class="question-number">Q7</span><p class="question-text"><span id="q7Text"></span> <span class="required">必填</span></p></div>
+        <label class="field"><span class="optional">請具體分享你的需求</span><textarea class="control" id="q7Input" rows="4"></textarea></label>
+        <p class="error-message">請填寫此題。</p>
+      </section>
+
+      <section class="question-card" id="card-q8">
+        <div class="question-heading"><span class="question-number">Q8</span><p class="question-text"><span id="q8Text"></span> <span class="optional">選填</span></p></div>
+        <label class="field"><span class="optional">歡迎補充說明</span><textarea class="control" id="q8Input" rows="4"></textarea></label>
+      </section>
+
+      <div class="submit-area">
+        <button class="submit-button" type="submit" id="submitBtn"><span id="submitLabel"></span><span aria-hidden="true">→</span></button>
+        <div class="status" id="formStatus" aria-live="polite"></div>
+      </div>
+    </form>
+    <footer>製作 by 中壢高商圖書館</footer>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="successModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal"><div class="modal-mark" aria-hidden="true">✓</div><h2 id="modalTitle">填寫完成</h2><p id="modalMessage">我們已收到你的回覆。</p><button type="button" id="closeModalBtn">關閉</button></div>
+  </div>
+
+  <script>
+    var surveyConfig = JSON.parse('<?!= surveyConfigJson ?>');
+    var selectedCourse = null;
+    var scaleLabels = ['非常不同意', '不同意', '普通', '同意', '非常同意'];
+
+    function createQuestion(text, index) {
+      var card = document.createElement('section');
+      card.className = 'question-card';
+      card.id = 'card-' + index;
+      var heading = document.createElement('div');
+      heading.className = 'question-heading';
+      var number = document.createElement('span');
+      number.className = 'question-number';
+      number.textContent = 'Q' + index;
+      var copy = document.createElement('p');
+      copy.className = 'question-text';
+      copy.textContent = text;
+      heading.append(number, copy);
+      var scale = document.createElement('div');
+      scale.className = 'likert';
+      scaleLabels.forEach(function(labelText, optionIndex) {
+        var label = document.createElement('label');
+        label.className = 'scale-choice';
+        var input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'Q' + index;
+        input.value = String(optionIndex + 1);
+        var face = document.createElement('span');
+        face.className = 'scale-face';
+        var dot = document.createElement('span');
+        dot.className = 'scale-dot';
+        var words = document.createElement('span');
+        words.className = 'scale-copy';
+        words.textContent = labelText;
+        face.append(dot, words);
+        label.append(input, face);
+        scale.append(label);
+      });
+      var error = document.createElement('p');
+      error.className = 'error-message';
+      error.textContent = '請選擇一個選項。';
+      card.append(heading, scale, error);
+      return card;
+    }
+
+    var questionsContainer = document.getElementById('questionsContainer');
+
+    function applySurveyConfig(config) {
+      surveyConfig = config;
+      document.getElementById('selectedCourseName').textContent = config.name;
+      document.getElementById('phaseBadge').textContent = config.badge;
+      document.getElementById('surveyTitle').textContent = config.title;
+      document.getElementById('surveyDescription').textContent = config.description;
+      document.getElementById('q7Text').textContent = config.q7;
+      document.getElementById('q8Text').textContent = config.q8;
+      document.getElementById('submitLabel').textContent = config.phase === 'PRE' ? '送出前測問卷' : '送出後測問卷';
+      questionsContainer.replaceChildren();
+      config.questions.forEach(function(text, index) { questionsContainer.append(createQuestion(text, index + 1)); });
+    }
+
+    function selectCourse(course, canChooseCourse) {
+      selectedCourse = course;
+      applySurveyConfig(course);
+      document.getElementById('backToCoursesBtn').hidden = !canChooseCourse;
+      document.getElementById('courseView').hidden = true;
+      document.getElementById('surveyView').hidden = false;
+      resetSurvey();
+    }
+
+    function renderCourses(courses) {
+      var list = document.getElementById('courseList');
+      var status = document.getElementById('courseStatus');
+      list.replaceChildren();
+      if (!courses || !courses.length) {
+        status.textContent = '目前沒有開放填答的課程。';
+        return;
+      }
+      if (courses.length === 1) {
+        selectCourse(courses[0], false);
+        return;
+      }
+      status.textContent = '';
+      courses.forEach(function(course) {
+        var button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'course-card';
+        var name = document.createElement('span'); name.className = 'course-name'; name.textContent = course.name;
+        var phase = document.createElement('span'); phase.className = 'course-phase'; phase.textContent = course.phaseDisplay;
+        var meta = document.createElement('span'); meta.className = 'course-meta'; meta.textContent = course.code + (course.courseDescription ? ' · ' + course.courseDescription : '');
+        button.append(name, phase, meta);
+        button.addEventListener('click', function() { selectCourse(course, true); });
+        list.append(button);
+      });
+    }
+
+    function loadCourses() {
+      document.getElementById('courseStatus').textContent = '正在讀取開放課程…';
+      google.script.run.withSuccessHandler(renderCourses).withFailureHandler(function(error) {
+        document.getElementById('courseStatus').textContent = error && error.message ? error.message : '課程讀取失敗，請重新整理頁面。';
+      }).getOpenCourses();
+    }
+
+    function returnToCourses() {
+      selectedCourse = null;
+      document.getElementById('surveyView').hidden = true;
+      document.getElementById('courseView').hidden = false;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      loadCourses();
+    }
+
+    function setRole(role) {
+      document.getElementById('teacherSection').classList.toggle('active', role === 'teacher');
+      document.getElementById('studentSection').classList.toggle('active', role === 'student');
+      document.getElementById('userInfoCard').classList.remove('error');
+      updateProgress();
+    }
+
+    var classData = { '商經科': ['1', '2', '3'], '國貿科': ['1', '2', '3', '4', '5'], '資處科': ['1', '2', '3', '4'], '綜合高中': ['1', '2', '3', '4'] };
+    document.getElementById('studentDept').addEventListener('change', function(event) {
+      var select = document.getElementById('studentClassNum');
+      select.replaceChildren(new Option('請選擇班級', ''));
+      (classData[event.target.value] || []).forEach(function(value) { select.append(new Option(value + ' 班', value)); });
+    });
+
+    function selectedValue(name) {
+      var input = document.querySelector('input[name="' + name + '"]:checked');
+      return input ? input.value : '';
+    }
+
+    function collectFormData() {
+      var role = selectedValue('role');
+      var data = {
+        courseCode: selectedCourse ? selectedCourse.code : '',
+        contactEmail: document.getElementById('contactEmail').value.trim(),
+        role: role, info1: '', info2: '', info3: '', info4: ''
+      };
+      if (role === 'teacher') {
+        data.info1 = document.getElementById('teacherSubject').value;
+        data.info2 = document.getElementById('teacherName').value.trim();
+      } else if (role === 'student') {
+        data.info1 = document.getElementById('studentDept').value;
+        data.info2 = document.getElementById('studentGrade').value;
+        data.info3 = document.getElementById('studentClassNum').value;
+        data.info4 = document.getElementById('studentId').value.trim();
+      }
+      for (var i = 1; i <= 6; i += 1) {
+        var score = selectedValue('Q' + i);
+        data['Q' + i] = score ? Number(score) : 0;
+      }
+      data.Q7 = document.getElementById('q7Input').value.trim();
+      data.Q8 = document.getElementById('q8Input').value.trim();
+      return data;
+    }
+
+    function identityComplete(data) {
+      if (data.role === 'teacher') return Boolean(data.info1 && data.info2);
+      if (data.role === 'student') return Boolean(data.info1 && data.info2 && data.info3 && data.info4);
+      return false;
+    }
+
+    function validateForm(data) {
+      document.querySelectorAll('.question-card.error').forEach(function(card) { card.classList.remove('error'); });
+      var valid = true;
+      var userInfoError = document.getElementById('userInfoError');
+      userInfoError.textContent = '請完整填寫身份與基本資料。';
+      if (!identityComplete(data)) {
+        document.getElementById('userInfoCard').classList.add('error');
+        valid = false;
+      }
+      var contactEmail = document.getElementById('contactEmail');
+      if (data.contactEmail && !contactEmail.validity.valid) {
+        document.getElementById('userInfoCard').classList.add('error');
+        userInfoError.textContent = '聯絡信箱格式不正確。';
+        valid = false;
+      }
+      for (var i = 1; i <= 6; i += 1) {
+        if (!data['Q' + i]) {
+          document.getElementById('card-' + i).classList.add('error');
+          valid = false;
+        }
+      }
+      if (!data.Q7) {
+        document.getElementById('card-q7').classList.add('error');
+        valid = false;
+      }
+      if (!valid) {
+        var firstError = document.querySelector('.question-card.error');
+        firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        var firstControl = firstError.querySelector('input, select, textarea');
+        if (firstControl) firstControl.focus({ preventScroll: true });
+      }
+      return valid;
+    }
+
+    function updateProgress() {
+      var data = collectFormData();
+      var completed = identityComplete(data) ? 1 : 0;
+      for (var i = 1; i <= 6; i += 1) if (data['Q' + i]) completed += 1;
+      if (data.Q7) completed += 1;
+      var percent = Math.round((completed / 8) * 100);
+      document.getElementById('progressBar').style.width = percent + '%';
+      document.getElementById('progressText').textContent = percent + '%';
+    }
+
+    function setSubmitting(isSubmitting) {
+      var button = document.getElementById('submitBtn');
+      button.disabled = isSubmitting;
+      document.getElementById('submitLabel').textContent = isSubmitting
+        ? '傳送中…'
+        : (surveyConfig.phase === 'PRE' ? '送出前測問卷' : '送出後測問卷');
+    }
+
+    function handleSuccess(response) {
+      setSubmitting(false);
+      if (!response || response.status !== 'success') {
+        handleFailure({ message: response && response.message ? response.message : '資料送出失敗，請稍後再試。' });
+        return;
+      }
+      document.getElementById('modalMessage').textContent = response.action === 'updated'
+        ? '已更新你在本階段的回覆。'
+        : '我們已收到你的回覆。';
+      document.getElementById('successModal').classList.add('active');
+      document.getElementById('closeModalBtn').focus();
+    }
+
+    function handleFailure(error) {
+      setSubmitting(false);
+      document.getElementById('formStatus').textContent = error && error.message
+        ? error.message
+        : '連線發生問題，請稍後再試。';
+    }
+
+    function resetSurvey() {
+      document.getElementById('surveyForm').reset();
+      document.getElementById('teacherSection').classList.remove('active');
+      document.getElementById('studentSection').classList.remove('active');
+      document.getElementById('studentClassNum').replaceChildren(new Option('請先選擇科別', ''));
+      document.querySelectorAll('.question-card.error').forEach(function(card) { card.classList.remove('error'); });
+      document.getElementById('formStatus').textContent = '';
+      document.getElementById('successModal').classList.remove('active');
+      updateProgress();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.querySelectorAll('input[name="role"]').forEach(function(input) {
+      input.addEventListener('change', function() { setRole(input.value); });
+    });
+    document.getElementById('surveyForm').addEventListener('input', updateProgress);
+    document.getElementById('surveyForm').addEventListener('change', updateProgress);
+    document.getElementById('closeModalBtn').addEventListener('click', resetSurvey);
+    document.getElementById('backToCoursesBtn').addEventListener('click', returnToCourses);
+
+    document.getElementById('surveyForm').addEventListener('submit', function(event) {
+      event.preventDefault();
+      document.getElementById('formStatus').textContent = '';
+      var data = collectFormData();
+      if (!validateForm(data)) return;
+      setSubmitting(true);
+      google.script.run
+        .withSuccessHandler(handleSuccess)
+        .withFailureHandler(handleFailure)
+        .submitSurvey(data);
+    });
+    loadCourses();
+  </script>
+</body>
+</html>
