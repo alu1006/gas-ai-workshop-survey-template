@@ -2,6 +2,12 @@
 
 這是一套可直接放入 Google Apps Script 的網頁問卷範本，資料寫入 Google 試算表。儲存庫將前端與後端程式放在根目錄，方便 Gemini、ChatGPT 或其他程式代理直接讀取與修改。
 
+## 教師快速開始
+
+### [點此建立 Google 試算表副本](https://docs.google.com/spreadsheets/d/1yPlyS8bggJzcFWCJLlAv3tmpxlgKa1_8zhdC-WsJwxs/copy)
+
+開啟連結後，按下「建立副本」，即可在自己的 Google 雲端硬碟取得可編輯的完整範本。
+
 ## 檔案
 
 - [`Code.gs`](./Code.gs)：後端、課程設定、資料驗證與寫入試算表。
