@@ -141,6 +141,10 @@
 
     .error-message { display: none; margin: 12px 0 0; color: var(--error); font-size: 13px; font-weight: 700; }
     .question-card.error .error-message { display: block; }
+    .section-title { margin: 30px 0 4px; color: var(--brown-deep); font: 900 23px/1.35 'Zen Maru Gothic', sans-serif; }
+    .topic-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .topic-choice { display: flex; gap: 10px; align-items: center; padding: 13px 15px; border: 2px solid var(--line); border-radius: 13px; background: #fff; cursor: pointer; }
+    .topic-choice:has(input:checked) { border-color: var(--gold); background: #fffaf0; color: var(--brown); font-weight: 800; }
     .submit-area { display: grid; place-items: center; gap: 13px; margin-top: 30px; }
     .submit-button { min-height: 54px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 13px 32px; border: 0; border-radius: 999px; color: #fff; background: linear-gradient(135deg, var(--gold), var(--gold-deep)); box-shadow: 0 12px 25px rgba(216,145,13,.24); font-weight: 900; cursor: pointer; transition: transform .2s ease, box-shadow .2s ease, opacity .2s ease; }
     .submit-button:hover { transform: translateY(-3px); box-shadow: 0 16px 32px rgba(216,145,13,.3); }
@@ -166,6 +170,7 @@
       .hero::after { font-size: 115px; bottom: -42px; }
       .question-card { padding: 21px 17px; border-radius: 18px; }
       .branch { grid-template-columns: 1fr; }
+      .topic-grid { grid-template-columns: 1fr; }
       .likert { grid-template-columns: 1fr; }
       .scale-face { min-height: 52px; display: flex; justify-content: space-between; padding: 10px 15px; }
       .scale-copy { font-size: 14px; }
@@ -225,6 +230,16 @@
       </section>
 
       <div id="questionsContainer"></div>
+      <div id="postQuestionsContainer"></div>
+      <div id="roleQuestionsContainer"></div>
+
+      <section class="question-card" id="topicsContainer" hidden>
+        <div class="question-heading"><span class="question-number">主題</span><p class="question-text">希望未來增加哪些主題？ <span class="optional">可複選、選填</span></p></div>
+        <div class="topic-grid" id="topicOptions"></div>
+        <div class="field contact-field"><label for="otherTopic">其他主題 <span class="optional">選填</span></label><input class="control" id="otherTopic" placeholder="請輸入其他想了解的主題"></div>
+      </section>
+
+      <div id="feedbackContainer"></div>
 
       <section class="question-card" id="card-q7">
         <div class="question-heading"><span class="question-number">Q7</span><p class="question-text"><span id="q7Text"></span> <span class="required">必填</span></p></div>
@@ -255,27 +270,27 @@
     var selectedCourse = null;
     var scaleLabels = ['非常不同意', '不同意', '普通', '同意', '非常同意'];
 
-    function createQuestion(text, index) {
+    function createQuestion(text, key, labelText) {
       var card = document.createElement('section');
       card.className = 'question-card';
-      card.id = 'card-' + index;
+      card.id = 'card-' + key;
       var heading = document.createElement('div');
       heading.className = 'question-heading';
       var number = document.createElement('span');
       number.className = 'question-number';
-      number.textContent = 'Q' + index;
+      number.textContent = labelText || key;
       var copy = document.createElement('p');
       copy.className = 'question-text';
       copy.textContent = text;
       heading.append(number, copy);
       var scale = document.createElement('div');
       scale.className = 'likert';
-      scaleLabels.forEach(function(labelText, optionIndex) {
+      scaleLabels.forEach(function(scaleText, optionIndex) {
         var label = document.createElement('label');
         label.className = 'scale-choice';
         var input = document.createElement('input');
         input.type = 'radio';
-        input.name = 'Q' + index;
+        input.name = key;
         input.value = String(optionIndex + 1);
         var face = document.createElement('span');
         face.className = 'scale-face';
@@ -283,7 +298,7 @@
         dot.className = 'scale-dot';
         var words = document.createElement('span');
         words.className = 'scale-copy';
-        words.textContent = labelText;
+        words.textContent = scaleText;
         face.append(dot, words);
         label.append(input, face);
         scale.append(label);
@@ -296,6 +311,37 @@
     }
 
     var questionsContainer = document.getElementById('questionsContainer');
+    var postQuestionsContainer = document.getElementById('postQuestionsContainer');
+    var roleQuestionsContainer = document.getElementById('roleQuestionsContainer');
+    var feedbackContainer = document.getElementById('feedbackContainer');
+
+    function createSectionTitle(text) {
+      var title = document.createElement('h2');
+      title.className = 'section-title';
+      title.textContent = text;
+      return title;
+    }
+
+    function createFeedbackQuestion(text, index) {
+      var card = document.createElement('section');
+      card.className = 'question-card';
+      var heading = document.createElement('div'); heading.className = 'question-heading';
+      var number = document.createElement('span'); number.className = 'question-number'; number.textContent = '建議 ' + index;
+      var copy = document.createElement('p'); copy.className = 'question-text'; copy.textContent = text;
+      var optional = document.createElement('span'); optional.className = 'optional'; optional.textContent = ' 選填'; copy.append(optional);
+      var textarea = document.createElement('textarea'); textarea.className = 'control'; textarea.id = 'feedback' + index; textarea.rows = 4;
+      heading.append(number, copy); card.append(heading, textarea);
+      return card;
+    }
+
+    function renderRoleQuestions(role) {
+      roleQuestionsContainer.replaceChildren();
+      if (surveyConfig.phase !== 'POST' || !role || !surveyConfig.roleQuestions[role]) return;
+      roleQuestionsContainer.append(createSectionTitle(role === 'teacher' ? '教師專屬題目' : '學生專屬題目'));
+      surveyConfig.roleQuestions[role].forEach(function(text, index) {
+        roleQuestionsContainer.append(createQuestion(text, 'R' + (index + 1), 'R' + (index + 1)));
+      });
+    }
 
     function applySurveyConfig(config) {
       surveyConfig = config;
@@ -303,11 +349,38 @@
       document.getElementById('phaseBadge').textContent = config.badge;
       document.getElementById('surveyTitle').textContent = config.title;
       document.getElementById('surveyDescription').textContent = config.description;
-      document.getElementById('q7Text').textContent = config.q7;
-      document.getElementById('q8Text').textContent = config.q8;
       document.getElementById('submitLabel').textContent = config.phase === 'PRE' ? '送出前測問卷' : '送出後測問卷';
       questionsContainer.replaceChildren();
-      config.questions.forEach(function(text, index) { questionsContainer.append(createQuestion(text, index + 1)); });
+      postQuestionsContainer.replaceChildren();
+      roleQuestionsContainer.replaceChildren();
+      feedbackContainer.replaceChildren();
+      var isPost = config.phase === 'POST';
+      document.getElementById('card-q7').hidden = isPost;
+      document.getElementById('card-q8').hidden = isPost;
+      document.getElementById('topicsContainer').hidden = !isPost;
+      if (!isPost) {
+        document.getElementById('q7Text').textContent = config.q7;
+        document.getElementById('q8Text').textContent = config.q8;
+        config.questions.forEach(function(text, index) { questionsContainer.append(createQuestion(text, 'Q' + (index + 1), 'Q' + (index + 1))); });
+        return;
+      }
+      config.sections.forEach(function(section) {
+        postQuestionsContainer.append(createSectionTitle(section.title));
+        section.questions.forEach(function(text, index) {
+          var key = section.code + (index + 1);
+          postQuestionsContainer.append(createQuestion(text, key, key));
+        });
+      });
+      var topicOptions = document.getElementById('topicOptions');
+      topicOptions.replaceChildren();
+      config.topicOptions.forEach(function(topic) {
+        var label = document.createElement('label'); label.className = 'topic-choice';
+        var input = document.createElement('input'); input.type = 'checkbox'; input.name = 'futureTopics'; input.value = topic;
+        var text = document.createElement('span'); text.textContent = topic;
+        label.append(input, text); topicOptions.append(label);
+      });
+      feedbackContainer.append(createSectionTitle('學習收穫與建議'));
+      config.feedbackQuestions.forEach(function(text, index) { feedbackContainer.append(createFeedbackQuestion(text, index + 1)); });
     }
 
     function selectCourse(course, canChooseCourse) {
@@ -364,6 +437,7 @@
       document.getElementById('teacherSection').classList.toggle('active', role === 'teacher');
       document.getElementById('studentSection').classList.toggle('active', role === 'student');
       document.getElementById('userInfoCard').classList.remove('error');
+      renderRoleQuestions(role);
       updateProgress();
     }
 
@@ -384,7 +458,8 @@
       var data = {
         courseCode: selectedCourse ? selectedCourse.code : '',
         contactEmail: document.getElementById('contactEmail').value.trim(),
-        role: role, info1: '', info2: '', info3: '', info4: ''
+        role: role, info1: '', info2: '', info3: '', info4: '',
+        futureTopics: [], otherTopic: '', feedback1: '', feedback2: '', feedback3: ''
       };
       if (role === 'teacher') {
         data.info1 = document.getElementById('teacherSubject').value;
@@ -395,12 +470,30 @@
         data.info3 = document.getElementById('studentClassNum').value;
         data.info4 = document.getElementById('studentId').value.trim();
       }
-      for (var i = 1; i <= 6; i += 1) {
-        var score = selectedValue('Q' + i);
-        data['Q' + i] = score ? Number(score) : 0;
+      if (surveyConfig.phase === 'POST') {
+        ['P','C','K'].forEach(function(prefix) {
+          for (var i = 1; i <= 4; i += 1) {
+            var score = selectedValue(prefix + i);
+            data[prefix + i] = score ? Number(score) : 0;
+          }
+        });
+        for (var r = 1; r <= 2; r += 1) {
+          var roleScore = selectedValue('R' + r);
+          data['R' + r] = roleScore ? Number(roleScore) : 0;
+        }
+        data.futureTopics = Array.from(document.querySelectorAll('input[name="futureTopics"]:checked')).map(function(input) { return input.value; });
+        data.otherTopic = document.getElementById('otherTopic').value.trim();
+        data.feedback1 = document.getElementById('feedback1').value.trim();
+        data.feedback2 = document.getElementById('feedback2').value.trim();
+        data.feedback3 = document.getElementById('feedback3').value.trim();
+      } else {
+        for (var i = 1; i <= 6; i += 1) {
+          var score = selectedValue('Q' + i);
+          data['Q' + i] = score ? Number(score) : 0;
+        }
+        data.Q7 = document.getElementById('q7Input').value.trim();
+        data.Q8 = document.getElementById('q8Input').value.trim();
       }
-      data.Q7 = document.getElementById('q7Input').value.trim();
-      data.Q8 = document.getElementById('q8Input').value.trim();
       return data;
     }
 
@@ -425,15 +518,14 @@
         userInfoError.textContent = '聯絡信箱格式不正確。';
         valid = false;
       }
-      for (var i = 1; i <= 6; i += 1) {
-        if (!data['Q' + i]) {
-          document.getElementById('card-' + i).classList.add('error');
-          valid = false;
-        }
-      }
-      if (!data.Q7) {
-        document.getElementById('card-q7').classList.add('error');
-        valid = false;
+      var requiredKeys = surveyConfig.phase === 'POST'
+        ? ['P1','P2','P3','P4','C1','C2','C3','C4','K1','K2','K3','K4','R1','R2']
+        : ['Q1','Q2','Q3','Q4','Q5','Q6'];
+      requiredKeys.forEach(function(key) {
+        if (!data[key]) { var card = document.getElementById('card-' + key); if (card) card.classList.add('error'); valid = false; }
+      });
+      if (surveyConfig.phase !== 'POST' && !data.Q7) {
+        document.getElementById('card-q7').classList.add('error'); valid = false;
       }
       if (!valid) {
         var firstError = document.querySelector('.question-card.error');
@@ -447,9 +539,13 @@
     function updateProgress() {
       var data = collectFormData();
       var completed = identityComplete(data) ? 1 : 0;
-      for (var i = 1; i <= 6; i += 1) if (data['Q' + i]) completed += 1;
-      if (data.Q7) completed += 1;
-      var percent = Math.round((completed / 8) * 100);
+      var keys = surveyConfig.phase === 'POST'
+        ? ['P1','P2','P3','P4','C1','C2','C3','C4','K1','K2','K3','K4','R1','R2']
+        : ['Q1','Q2','Q3','Q4','Q5','Q6'];
+      keys.forEach(function(key) { if (data[key]) completed += 1; });
+      if (surveyConfig.phase !== 'POST' && data.Q7) completed += 1;
+      var total = 1 + keys.length + (surveyConfig.phase === 'POST' ? 0 : 1);
+      var percent = Math.round((completed / total) * 100);
       document.getElementById('progressBar').style.width = percent + '%';
       document.getElementById('progressText').textContent = percent + '%';
     }

@@ -33,6 +33,18 @@ test('getSurveyConfig returns PRE copy and questions', () => {
   assert.match(config.q7, /最期待學到什麼/);
 });
 
+test('POST config exposes P C K role topics and optional feedback', () => {
+  const app = loadCode();
+  const config = app.surveyConfigForPhase_('POST');
+  assert.deepEqual(Array.from(config.sections, section => section.code), ['P', 'C', 'K']);
+  assert.deepEqual(Array.from(config.sections, section => section.questions.length), [4, 4, 4]);
+  assert.equal(config.roleQuestions.teacher.length, 2);
+  assert.equal(config.roleQuestions.student.length, 2);
+  assert.deepEqual(Array.from(config.topicOptions), ['生成式 AI', 'AR/VR', '物聯網', '機器人', '資安']);
+  assert.equal(config.feedbackQuestions.length, 3);
+  assert.equal(config.questions, undefined);
+});
+
 test('doGet binds serialized config to Index template', () => {
   const evaluated = {
     setTitle() { return this; },
@@ -74,13 +86,19 @@ function makeSheet(name = '') {
     validation: null,
     validations: [],
     insertedColumns: [],
+    maxColumns: 26,
     getLastRow() { return this.rows.length; },
     getMaxRows() { return Math.max(this.rows.length, 100); },
+    getMaxColumns() { return this.maxColumns; },
     setFrozenRows(count) { this.frozenRows = count; },
     appendRow(row) { this.rows.push([...row]); },
     insertColumnAfter(column) {
       this.insertedColumns.push(column);
       this.rows.forEach(row => row.splice(column, 0, ''));
+    },
+    insertColumnsAfter(column, count) {
+      this.insertedColumns.push({ after: column, count });
+      this.maxColumns += count;
     },
     getRange(row, column, rowCount, columnCount) {
       return {
@@ -147,6 +165,73 @@ function validTeacher(overrides = {}) {
     Q7: '學會設計提示詞', Q8: '希望有更多範例', ...overrides,
   };
 }
+
+function validPost(role = 'teacher', overrides = {}) {
+  return {
+    courseCode: 'AI002', contactEmail: '', role,
+    info1: role === 'teacher' ? '英文' : '資處科',
+    info2: role === 'teacher' ? '王老師' : '一年級',
+    info3: role === 'teacher' ? '' : '1 班',
+    info4: role === 'teacher' ? '' : 's115001',
+    P1: 5, P2: 4, P3: 5, P4: 4,
+    C1: 5, C2: 4, C3: 5, C4: 4,
+    K1: 5, K2: 4, K3: 5, K4: 4,
+    R1: 5, R2: 4,
+    futureTopics: ['生成式 AI', '資安'], otherTopic: '',
+    feedback1: '', feedback2: '', feedback3: '',
+    ...overrides,
+  };
+}
+
+test('POST accepts required scales and optional topics and feedback', () => {
+  const app = loadCode();
+  assert.doesNotThrow(() => app.validateSubmission_(validPost('teacher'), 'teacher@clvsc.tyc.edu.tw', 'POST'));
+  assert.doesNotThrow(() => app.validateSubmission_(validPost('student', {
+    futureTopics: [], otherTopic: '', feedback1: '', feedback2: '', feedback3: '',
+  }), 'student@clvsc.tyc.edu.tw', 'POST'));
+});
+
+test('POST rejects invalid scales and unknown topic values', () => {
+  const app = loadCode();
+  assert.throws(
+    () => app.validateSubmission_(validPost('teacher', { P1: 6 }), 'teacher@clvsc.tyc.edu.tw', 'POST'),
+    /P1.*1 到 5/
+  );
+  assert.throws(
+    () => app.validateSubmission_(validPost('student', { futureTopics: ['量子電腦'] }), 'student@clvsc.tyc.edu.tw', 'POST'),
+    /未來主題/
+  );
+});
+
+test('POST appends explicit columns once and preserves legacy Q columns', () => {
+  const currentHeader = [
+    '填寫時間', '課程代碼', '課程名稱', '階段', '登入信箱', '聯絡信箱', '身份', '科別', '年級／姓名',
+    '班級', '姓名／學號', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8'
+  ];
+  const workbook = makeWorkbook({ '問卷回覆': [currentHeader] });
+  const app = loadCode({ SpreadsheetApp: makeSpreadsheetApp(workbook) });
+  app.ensureSurveySheets_();
+  app.ensureSurveySheets_();
+  const headers = workbook.getSheetByName('問卷回覆').rows[0];
+  assert.deepEqual(headers.slice(11, 19), ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'Q8']);
+  assert.deepEqual(headers.slice(19), [
+    'P1','P2','P3','P4','C1','C2','C3','C4','K1','K2','K3','K4',
+    'R1','R2','未來主題','其他主題','收穫內容','改進建議','想參加主題'
+  ]);
+  assert.equal(headers.length, 38);
+});
+
+test('POST row leaves PRE answer columns blank and writes redesigned answers', () => {
+  const app = loadCode();
+  const row = app.buildRow_(validPost('teacher', {
+    futureTopics: ['生成式 AI', '資安'], otherTopic: 'AI 法規',
+    feedback1: '提示詞', feedback2: '增加實作', feedback3: '機器人',
+  }), 'teacher@clvsc.tyc.edu.tw', { code: 'AI002', name: '新興科技', phase: 'POST' });
+  assert.deepEqual(Array.from(row.slice(11, 19)), ['', '', '', '', '', '', '', '']);
+  assert.deepEqual(Array.from(row.slice(19, 33)), [5,4,5,4,5,4,5,4,5,4,5,4,5,4]);
+  assert.equal(row[33], '生成式 AI｜資安');
+  assert.deepEqual(Array.from(row.slice(34)), ['AI 法規', '提示詞', '增加實作', '機器人']);
+});
 
 test('getOpenCourses creates named sheets and a default course', () => {
   const workbook = makeWorkbook();
@@ -239,10 +324,10 @@ test('legacy response sheet inserts the contact email column only once', () => {
   app.ensureSurveySheets_();
   const sheet = workbook.getSheetByName('問卷回覆');
   assert.equal(sheet.rows[0][5], '聯絡信箱');
-  assert.equal(sheet.rows[0].length, 19);
+  assert.equal(sheet.rows[0].length, 38);
   assert.equal(sheet.rows[1][5], '');
   assert.equal(sheet.rows[1][6], '教師');
-  assert.deepEqual(sheet.insertedColumns, [5]);
+  assert.deepEqual(sheet.insertedColumns, [5, { after: 26, count: 12 }]);
 });
 
 test('submitSurvey rejects an unknown or closed course', () => {
