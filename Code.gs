@@ -247,7 +247,7 @@ function normalizeContactEmail_(value) {
 }
 
 function validateSubmission_(data, email, phase) {
-  if (!data || !cleanText_(email)) throw new UserFacingError_('無法取得登入信箱，請使用校內帳號重新登入。');
+  if (!data) throw new UserFacingError_('未收到問卷資料，請重新填寫。');
   if (data.role !== 'teacher' && data.role !== 'student') throw new UserFacingError_('請選擇身份。');
   if (!cleanText_(data.info1) || !cleanText_(data.info2)) throw new UserFacingError_('請完整填寫基本資料。');
   if (data.role === 'student' && (!cleanText_(data.info3) || !cleanText_(data.info4))) throw new UserFacingError_('請完整填寫學生資料。');
@@ -310,10 +310,10 @@ function submitSurvey(data) {
   try {
     var sheets = ensureSurveySheets_();
     var course = findOpenCourse_(data && data.courseCode);
-    var email = Session.getActiveUser().getEmail();
+    var email = cleanText_(Session.getActiveUser().getEmail()).toLowerCase();
     validateSubmission_(data, email, course.phase);
     var row = buildRow_(data, email, course);
-    var existingRow = findExistingRow_(sheets.responseSheet, cleanText_(email), course.code, row[3]);
+    var existingRow = email ? findExistingRow_(sheets.responseSheet, email, course.code, row[3]) : 0;
     if (existingRow) {
       sheets.responseSheet.getRange(existingRow, 1, 1, row.length).setValues([row]);
       return { status: 'success', action: 'updated' };

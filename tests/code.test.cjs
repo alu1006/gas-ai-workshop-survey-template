@@ -308,6 +308,31 @@ test('contact email is optional but rejects malformed values', () => {
   );
 });
 
+test('empty login email accepts valid PRE and POST submissions', () => {
+  const app = loadCode();
+  assert.doesNotThrow(() => app.validateSubmission_(validTeacher(), '', 'PRE'));
+  assert.doesNotThrow(() => app.validateSubmission_(validPost('student'), '', 'POST'));
+});
+
+test('anonymous submissions always append with a blank login email', () => {
+  const workbook = makeWorkbook();
+  const app = loadCode({
+    Session: { getActiveUser: () => ({ getEmail: () => '' }) },
+    SpreadsheetApp: makeSpreadsheetApp(workbook),
+  });
+
+  const first = app.submitSurvey(validTeacher());
+  const second = app.submitSurvey(validTeacher({ Q1: 4 }));
+  const sheet = workbook.getSheetByName('問卷回覆');
+  assert.equal(first.status, 'success');
+  assert.equal(first.action, 'created');
+  assert.equal(second.status, 'success');
+  assert.equal(second.action, 'created');
+  assert.equal(sheet.rows.length, 3);
+  assert.equal(sheet.rows[1][4], '');
+  assert.equal(sheet.rows[2][4], '');
+});
+
 test('legacy response sheet inserts the contact email column only once', () => {
   const legacyHeader = [
     '填寫時間', '課程代碼', '課程名稱', '階段', '登入信箱', '身份', '科別', '年級／姓名',
